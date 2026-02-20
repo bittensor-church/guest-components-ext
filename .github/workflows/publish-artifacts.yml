@@ -1,0 +1,92 @@
+name: Publish artifacts with ORAS
+
+on:
+  push:
+    branches:
+    - main
+
+permissions:
+  contents: read
+
+jobs:
+  publish-klp-and-aai:
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    runs-on: ubuntu-24.04
+    env:
+      LIBC: gnu
+      REGISTRY: ghcr.io
+      IMAGE_NAME: ${{ github.repository }}
+      RUST_TARGET: x86_64-unknown-linux-gnu
+    steps:
+    - name: Harden the runner (Audit all outbound calls)
+      uses: step-security/harden-runner@20cf305ff2072d973412fa9b1e3a4f227bda3c76 # v2.14.0
+      with:
+        egress-policy: audit
+
+    - name: Log in to the Container registry
+      uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - uses: oras-project/setup-oras@22ce207df3b08e061f537244349aac6ae1d214f6 # v1.2.4
+      with:
+        version: 1.2.0
+
+    - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+    - uses: actions-rust-lang/setup-rust-toolchain@1780873c7b576612439a134613cc4cc74ce5538c # v1.15.2
+      with:
+        target: ${{ env.RUST_TARGET }}
+
+    - name: Build KLP
+      env:
+        ARCH: x86_64
+      run: make ./target/${{ env.RUST_TARGET }}/release/kbs-local-provider
+
+    - name: Build AAI
+      env:
+        ARCH: x86_64
+      run: make ./target/${{ env.RUST_TARGET }}/release/attestation-agent-init
+
+    - name: Publish KLP + AAI with ORAS
+      id: publish
+      run: |
+        arch="x86_64"
+        # After building for target powerpc64le, tag and push the image as ppc64le to match standard arch naming.
+        [ "$arch" = "powerpc64le" ] && arch="ppc64le"
+        tag="${{ github.sha }}-${arch}"
+        mkdir oras
+        cd oras
+        cp ../target/${{ env.RUST_TARGET }}/release/{kbs-local-provider,attestation-agent-init} .
+
+        tar cJf kbs-local-provider.tar.xz kbs-local-provider
+        image="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/kbs-local-provider"
+        oras push "${image}:${tag}" kbs-local-provider.tar.xz
+        echo "klp-image=${image}" >> "$GITHUB_OUTPUT"
+        digest="$(oras manifest fetch "${image}:${tag}" --descriptor | jq -r .digest)"
+        echo "klp-digest=${digest}" >> "$GITHUB_OUTPUT"
+
+        tar cJf attestation-agent-init.tar.xz attestation-agent-init
+        image="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/attestation-agent-init"
+        oras push "${image}:${tag}" attestation-agent-init.tar.xz
+        echo "aai-image=${image}" >> "$GITHUB_OUTPUT"
+        digest="$(oras manifest fetch "${image}:${tag}" --descriptor | jq -r .digest)"
+        echo "aai-digest=${digest}" >> "$GITHUB_OUTPUT"
+
+    - uses: actions/attest-build-provenance@00014ed6ed5efc5b1ab7f7f34a39eb55d41aa4f8 # v3.1.0
+      with:
+        subject-name: ${{ steps.publish.outputs.klp-image }}
+        subject-digest: ${{ steps.publish.outputs.klp-digest }}
+        push-to-registry: true
+
+    - uses: actions/attest-build-provenance@00014ed6ed5efc5b1ab7f7f34a39eb55d41aa4f8 # v3.1.0
+      with:
+        subject-name: ${{ steps.publish.outputs.aai-image }}
+        subject-digest: ${{ steps.publish.outputs.aai-digest }}
+        push-to-registry: true
