@@ -12,7 +12,7 @@ base64 = "0.22"
 env_logger = "0.11"
 hkdf = "0.12"
 log = "0.4"
-nix = { version = "0.29", features = ["fs"] }
+nix = { version = "0.31", features = ["fs"] }
 picky-asn1-der = "0.4"
 picky-asn1-x509 = "0.12"
 serde = { version = "1", features = ["derive"] }
