@@ -17,6 +17,6 @@ picky-asn1-der = "0.4"
 picky-asn1-x509 = "0.12"
 serde = { version = "1", features = ["derive"] }
 sha2 = "0.10"
-toml = "0.8"
+toml = "1.0"
 tss-esapi = "7.5"
 zeroize = { version = "1.8", features = ["derive"] }
