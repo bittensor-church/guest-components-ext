@@ -87,13 +87,13 @@ jobs:
         digest="$(oras manifest fetch "${image}:${tag}" --descriptor | jq -r .digest)"
         echo "aai-digest=${digest}" >> "$GITHUB_OUTPUT"
 
-    - uses: actions/attest-build-provenance@00014ed6ed5efc5b1ab7f7f34a39eb55d41aa4f8 # v3.1.0
+    - uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
       with:
         subject-name: ${{ steps.publish.outputs.klp-image }}
         subject-digest: ${{ steps.publish.outputs.klp-digest }}
         push-to-registry: true
 
-    - uses: actions/attest-build-provenance@00014ed6ed5efc5b1ab7f7f34a39eb55d41aa4f8 # v3.1.0
+    - uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
       with:
         subject-name: ${{ steps.publish.outputs.aai-image }}
         subject-digest: ${{ steps.publish.outputs.aai-digest }}
