@@ -28,7 +28,7 @@ jobs:
         egress-policy: audit
 
     - name: Log in to the Container registry
-      uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
+      uses: docker/login-action@a0d57b8e43b6ef1cca20559d68cec2227e63fccd
       with:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
